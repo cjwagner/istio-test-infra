@@ -1,46 +1,46 @@
+_:
+  bazel_postsubmit_spec: &bazel_postsubmit_spec
+    containers:
+    - image: gcr.io/istio-testing/prowbazel:0.5.10
+      args:
+      - "--repo=github.com/$(REPO_OWNER)/$(REPO_NAME)=$(PULL_REFS)"
+      - "--clean"
+      - "--timeout=120"
+      # Bazel needs privileged mode in order to sandbox builds.
+      securityContext:
+        privileged: true
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "1000m"
+        limits:
+          memory: "30Gi"
+          cpu: "8000m"
+    nodeSelector:
+      testing: build-pool
 
-bazel_postsubmit_spec: &bazel_postsubmit_spec
-  containers:
-  - image: gcr.io/istio-testing/prowbazel:0.5.10
-    args:
-    - "--repo=github.com/$(REPO_OWNER)/$(REPO_NAME)=$(PULL_REFS)"
-    - "--clean"
-    - "--timeout=120"
-    # Bazel needs privileged mode in order to sandbox builds.
-    securityContext:
-      privileged: true
-    resources:
-      requests:
-        memory: "1Gi"
-        cpu: "1000m"
-      limits:
-        memory: "30Gi"
-        cpu: "8000m"
-  nodeSelector:
-    testing: build-pool
+  bazel_spec: &bazel_spec
+    containers:
+    - image: gcr.io/istio-testing/prowbazel:0.5.10
+      args:
+      - "--repo=github.com/$(REPO_OWNER)/$(REPO_NAME)=$(PULL_REFS)"
+      - "--clean"
+      - "--timeout=60"
+      # Bazel needs privileged mode in order to sandbox builds.
+      securityContext:
+        privileged: true
+      resources:
+        requests:
+          memory: "1Gi"
+          cpu: "1000m"
+        limits:
+          memory: "30Gi"
+          cpu: "8000m"
+    nodeSelector:
+      testing: build-pool
 
-bazel_spec: &bazel_spec
-  containers:
-  - image: gcr.io/istio-testing/prowbazel:0.5.10
-    args:
-    - "--repo=github.com/$(REPO_OWNER)/$(REPO_NAME)=$(PULL_REFS)"
-    - "--clean"
-    - "--timeout=60"
-    # Bazel needs privileged mode in order to sandbox builds.
-    securityContext:
-      privileged: true
-    resources:
-      requests:
-        memory: "1Gi"
-        cpu: "1000m"
-      limits:
-        memory: "30Gi"
-        cpu: "8000m"
-  nodeSelector:
-    testing: build-pool
-
-branch_spec: &branch_spec
-- "^release-1.1$"
+  branch_spec: &branch_spec
+  - "^release-1.1$"
 
 presubmits:
 

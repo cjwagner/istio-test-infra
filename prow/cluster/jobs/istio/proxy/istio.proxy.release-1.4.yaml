@@ -1,5 +1,6 @@
-branch_spec: &branch_spec
-- "^release-1.4$"
+_:
+  branch_spec: &branch_spec
+  - "^release-1.4$"
 
 presubmits:
 
@@ -23,7 +24,7 @@ presubmits:
       preset-service-account: "true"
     spec:
       containers:
-      - image: gcr.io/istio-testing/prowbazel:0.5.16
+      - image: gcr.io/istio-testing/prowbazel:0.5.14
         command:
         - ./prow/proxy-presubmit.sh
         resources:
@@ -54,7 +55,7 @@ presubmits:
       preset-service-account: "true"
     spec:
       containers:
-      - image: gcr.io/istio-testing/prowbazel:0.5.16
+      - image: gcr.io/istio-testing/prowbazel:0.5.14
         command:
         - ./prow/proxy-presubmit-asan.sh
         resources:
@@ -85,7 +86,7 @@ presubmits:
       preset-service-account: "true"
     spec:
       containers:
-      - image: gcr.io/istio-testing/prowbazel:0.5.16
+      - image: gcr.io/istio-testing/prowbazel:0.5.14
         command:
         - ./prow/proxy-presubmit-tsan.sh
         resources:
@@ -116,7 +117,7 @@ presubmits:
       preset-service-account: "true"
     spec:
       containers:
-      - image: gcr.io/istio-testing/prowbazel:0.5.16
+      - image: gcr.io/istio-testing/prowbazel:0.5.14
         command:
         - ./prow/proxy-presubmit-release.sh
         resources:
@@ -153,7 +154,7 @@ postsubmits:
       preset-service-account: "true"
     spec:
       containers:
-      - image: gcr.io/istio-testing/prowbazel:0.5.16
+      - image: gcr.io/istio-testing/prowbazel:0.5.14
         command:
         - ./prow/proxy-postsubmit.sh
         securityContext:

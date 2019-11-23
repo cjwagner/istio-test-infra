@@ -1,44 +1,45 @@
-test_infra_master_spec: &test_infra_master_spec
-  containers:
-  - image: gcr.io/istio-testing/prowbazel:0.4.13
-    args:
-    - "--repo=github.com/istio/test-infra=master"
-    - "--clean"
-    - "--timeout=30"
-    # Bazel needs privileged mode in order to sandbox builds.
+_:
+  test_infra_master_spec: &test_infra_master_spec
+    containers:
+    - image: gcr.io/istio-testing/prowbazel:0.4.13
+      args:
+      - "--repo=github.com/istio/test-infra=master"
+      - "--clean"
+      - "--timeout=30"
+      # Bazel needs privileged mode in order to sandbox builds.
+      securityContext:
+        privileged: true
+    nodeSelector:
+      testing: test-pool
+
+  istio_rel_pipeline_spec: &istio_rel_pipeline_spec
+    nodeSelector:
+      testing: build-pool
+
+  istio_rel_pipeline_container: &istio_rel_pipeline_container
+    image: gcr.io/istio-testing/build-tools:2019-10-18T14-31-21
+    # Docker in Docker
     securityContext:
       privileged: true
-  nodeSelector:
-    testing: test-pool
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "24Gi"
+        cpu: "7000m"
 
-istio_rel_pipeline_spec: &istio_rel_pipeline_spec
-  nodeSelector:
-    testing: build-pool
-
-istio_rel_pipeline_container: &istio_rel_pipeline_container
-  image: gcr.io/istio-testing/build-tools:2019-10-18T14-31-21
-  # Docker in Docker
-  securityContext:
-    privileged: true
-  resources:
-    requests:
-      memory: "512Mi"
-      cpu: "500m"
-    limits:
-      memory: "24Gi"
-      cpu: "7000m"
-
-istio_container_with_kind: &istio_container_with_kind
-  image: gcr.io/istio-testing/istio-builder:v20190926-b1cd57d5
-  securityContext:
-    privileged: true
-  resources:
-    requests:
-      memory: "2Gi"
-      cpu: "3000m"
-    limits:
-      memory: "24Gi"
-      cpu: "3000m"
+  istio_container_with_kind: &istio_container_with_kind
+    image: gcr.io/istio-testing/istio-builder:v20190926-b1cd57d5
+    securityContext:
+      privileged: true
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "3000m"
+      limits:
+        memory: "24Gi"
+        cpu: "3000m"
 
 periodics:
 
@@ -52,6 +53,34 @@ periodics:
     preset-service-account: "true"
   spec:
     <<: *test_infra_master_spec
+
+- interval: 24h
+  name: proxy-postsubmit-periodic
+  context: prow/proxy-postsubmit.sh
+  annotations:
+    testgrid-create-test-group: "false"
+  branches: master
+  labels:
+    preset-service-account: "true"
+  spec:
+    containers:
+    - image: gcr.io/istio-testing/prowbazel:0.4.13
+      args:
+      - "--repo=github.com/istio/proxy"
+      - "--clean"
+      - "--timeout=120"
+      # Bazel needs privileged mode in order to sandbox builds.
+      securityContext:
+        privileged: true
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "500m"
+        limits:
+          memory: "24Gi"
+          cpu: "7000m"
+    nodeSelector:
+      testing: build-pool
 
 - interval: 30m
   name: release-requests-janitor
@@ -164,6 +193,10 @@ periodics:
     timeout: 12h0m0s
   extra_refs:
     - org: istio
+      repo: istio
+      base_ref: master
+      path_alias: istio.io/istio
+    - org: istio
       repo: tools
       base_ref: master
       path_alias: istio.io/tools
@@ -181,7 +214,39 @@ periodics:
             value: master
         command:
           - entrypoint
-          - perf/benchmark/run_benchmark_job.sh
+          - prow/perf_benchmark_test.sh
+
+- cron: "0 8 * * *" # starts every day at 08:00AM UTC
+  name: daily-performance-benchmark-release-1.3
+  branches: release-1.3
+  decorate: true
+  timeout: 12h
+  decoration_config:
+    timeout: 12h0m0s
+  extra_refs:
+    - org: istio
+      repo: istio
+      base_ref: release-1.3
+      path_alias: istio.io/istio
+    - org: istio
+      repo: tools
+      base_ref: release-1.3
+      path_alias: istio.io/tools
+  annotations:
+    testgrid-dashboards: istio_release-pipeline
+    testgrid-alert-email: istio-oncall@googlegroups.com
+    testgrid-num-failures-to-alert: '1'
+  labels:
+    preset-service-account: "true"
+  spec:
+    containers:
+      - <<: *istio_container_with_kind
+        env:
+          - name: GIT_BRANCH
+            value: release-1.3
+        command:
+          - entrypoint
+          - prow/perf_benchmark_test.sh
 
 - cron: "0 16 * * *"  # starts every day at 16:00PM UTC
   name: daily-performance-benchmark-release-1.4
@@ -215,37 +280,8 @@ periodics:
           - entrypoint
           - prow/perf_benchmark_test.sh
 
-# upgrade using helm from 1.2.8 to 1.3.4
-- cron: "0 2 * * *"  # starts every day at 02:00AM UTC
-  name: istio-upgrade-using-helm-1.2.8-1.3.4
-  branches: master         # this master branch is for prow/upgrade-tests.sh
-  decorate: true
-  extra_refs:
-    - org: istio
-      repo: istio
-      base_ref: master
-      path_alias: istio.io/istio
-  annotations:
-    testgrid-dashboards: istio_release-pipeline
-    testgrid-alert-email: istio-oncall@googlegroups.com
-    testgrid-num-failures-to-alert: '1'
-  labels:
-    preset-service-account: "true"
-  spec:
-    containers:
-      - <<: *istio_container_with_kind
-        env:
-          - name: SOURCE_TAG
-            value: 1.2.8
-          - name: TARGET_TAG
-            value: 1.3.4
-        command:
-          - entrypoint
-          - prow/upgrade-tests.sh
-
-# upgrade using helm from 1.3.0 to 1.3.4
-- cron: "0 6 * * *"  # starts every day at 06:00AM UTC
-  name: istio-upgrade-using-helm-1.3.0-1.3.4
+- cron: "0 18 * * *"  # starts every day at 18:00PM UTC
+  name: istio-upgrade-helm-chart
   branches: master
   decorate: true
   extra_refs:
@@ -262,99 +298,7 @@ periodics:
   spec:
     containers:
       - <<: *istio_container_with_kind
-        env:
-          - name: SOURCE_TAG
-            value: 1.3.0
-          - name: TARGET_TAG
-            value: 1.3.4
         command:
           - entrypoint
           - prow/upgrade-tests.sh
 
-# upgrade using helm from 1.3.4 t0 1.4.0-beta.1
-- cron: "0 10 * * *"  # starts every day at 10:00AM UTC
-  name: istio-upgrade-using-helm-1.3.4-1.4.0-beta.1
-  branches: master
-  decorate: true
-  extra_refs:
-    - org: istio
-      repo: istio
-      base_ref: master
-      path_alias: istio.io/istio
-  annotations:
-    testgrid-dashboards: istio_release-pipeline
-    testgrid-alert-email: istio-oncall@googlegroups.com
-    testgrid-num-failures-to-alert: '1'
-  labels:
-    preset-service-account: "true"
-  spec:
-    containers:
-      - <<: *istio_container_with_kind
-        env:
-          - name: SOURCE_TAG
-            value: 1.3.4
-          - name: TARGET_TAG
-            value: 1.4.0-beta.1
-        command:
-          - entrypoint
-          - prow/upgrade-tests.sh
-
-# upgrade using istioctl from 1.3.3 to 1.4.0-beta.1
-- cron: "0 14 * * *"  # starts every day at 14:00AM UTC
-  name: istio-upgrade-using-istioctl-1.3.3-1.4.0-beta.1
-  branches: master
-  decorate: true
-  extra_refs:
-    - org: istio
-      repo: istio
-      base_ref: master
-      path_alias: istio.io/istio
-  annotations:
-    testgrid-dashboards: istio_release-pipeline
-    testgrid-alert-email: istio-oncall@googlegroups.com
-    testgrid-num-failures-to-alert: '1'
-  labels:
-    preset-service-account: "true"
-  spec:
-    containers:
-      - <<: *istio_container_with_kind
-        env:
-          - name: SOURCE_TAG
-            value: 1.3.3
-          - name: TARGET_TAG
-            value: 1.4.0-beta.1
-          - name: INSTALL_OPTIONS
-            value: istioctl
-        command:
-          - entrypoint
-          - prow/upgrade-tests.sh
-
-# upgrade using istioctl from 1.3.0 t0 1.4.0-beta.1
-- cron: "0 18 * * *"  # starts every day at 18:00AM UTC
-  name: istio-upgrade-using-istioctl-1.3.0-1.4.0-beta.1
-  branches: master
-  decorate: true
-  extra_refs:
-    - org: istio
-      repo: istio
-      base_ref: master
-      path_alias: istio.io/istio
-  annotations:
-    testgrid-dashboards: istio_release-pipeline
-    testgrid-alert-email: istio-oncall@googlegroups.com
-    testgrid-num-failures-to-alert: '1'
-  labels:
-    preset-service-account: "true"
-  spec:
-    containers:
-      - <<: *istio_container_with_kind
-        env:
-          - name: SOURCE_TAG
-            value: 1.3.0
-          - name: TARGET_TAG
-            value: 1.4.0-beta.1
-          - name: INSTALL_OPTIONS
-            value: istioctl
-        command:
-          - entrypoint
-          - prow/upgrade-tests.sh

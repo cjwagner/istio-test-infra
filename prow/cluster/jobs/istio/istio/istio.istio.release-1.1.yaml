@@ -1,21 +1,22 @@
-job_template: &job_template
-  branches:
-  - "^release-1.1$"
-  decorate: true
-  path_alias: istio.io/istio
+_:
+  job_template: &job_template
+    branches:
+    - "^release-1.1$"
+    decorate: true
+    path_alias: istio.io/istio
 
-istio_container: &istio_container
-  image: gcr.io/istio-testing/istio-builder:v20190823-25f7c637
-  # Docker in Docker
-  securityContext:
-    privileged: true
-  resources:
-    requests:
-      memory: "2Gi"
-      cpu: "3000m"
-    limits:
-      memory: "24Gi"
-      cpu: "3000m"
+  istio_container: &istio_container
+    image: gcr.io/istio-testing/istio-builder:v20190823-25f7c637
+    # Docker in Docker
+    securityContext:
+      privileged: true
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "3000m"
+      limits:
+        memory: "24Gi"
+        cpu: "3000m"
 
 presubmits:
 

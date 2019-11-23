@@ -1,3 +1,26 @@
+periodics:
+- name: checkconfigprow
+  interval: 1h
+  extra_refs:
+  - org: cjwagner
+    repo: test-infra-istio
+    base_ref: anchorssssssssss
+  decorate: true
+  spec:
+    containers:
+    - image: gcr.io/k8s-prow/checkconfig:v20191121-1ff2207db
+      command:
+      - /checkconfig
+      args:
+      - --config-path=prow/config.yaml
+      - --job-config-path=prow/cluster/jobs
+      - --plugin-config=prow/plugins.yaml
+      - --strict
+      - --exclude-warning=mismatched-tide
+      - --exclude-warning=non-decorated-jobs
+
+
+
 presubmits:
   istio/test-infra:
 

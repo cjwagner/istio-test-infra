@@ -1,4 +1,54 @@
 ---
+_:
+  branch_spec: &branch_spec
+  - "^release-1.2$"
+
+  job_template: &job_template
+    branches: *branch_spec
+    decorate: true
+
+  istio_rel_pipeline_spec: &istio_rel_pipeline_spec
+    nodeSelector:
+      testing: build-pool
+
+  istio_rel_pipeline_container: &istio_rel_pipeline_container
+    image: gcr.io/istio-testing/istio-builder:v20191017-386873c9-dirty
+    # Docker in Docker
+    securityContext:
+      privileged: true
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "3000m"
+      limits:
+        memory: "24Gi"
+        cpu: "3000m"
+
+  istio_container: &istio_container
+    image: gcr.io/istio-testing/istio-builder:v20191017-386873c9-dirty
+    # Docker in Docker
+    securityContext:
+      privileged: true
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "3000m"
+      limits:
+        memory: "24Gi"
+        cpu: "3000m"
+
+  istio_container_with_kind: &istio_container_with_kind
+    image: gcr.io/istio-testing/istio-builder:v20191017-386873c9-dirty
+    securityContext:
+      privileged: true
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "3000m"
+      limits:
+        memory: "24Gi"
+        cpu: "3000m"
+
 plank:
   job_url_template: 'https://prow.istio.io/view/gcs/istio-prow{{if eq .Spec.Type "presubmit"}}/pr-logs/pull/{{.Spec.Refs.Org}}_{{.Spec.Refs.Repo}}/{{with index .Spec.Refs.Pulls 0}}{{.Number}}{{end}}{{else if eq .Spec.Type "batch"}}/pr-logs/pull/batch{{else}}/logs{{end}}/{{.Spec.Job}}/{{.Status.BuildID}}'
   job_url_prefix_config:
